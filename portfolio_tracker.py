@@ -7,7 +7,6 @@ import openpyxl
 from pathlib import Path
 
 #current problem: combining the tickers owned, deleting transactions
-# now it just writes all the transactions
 
 def main():
     filename = Path("stock_tracker.xlsx")
@@ -24,7 +23,8 @@ def main():
         portfolio = pd.read_excel(filename, index_col = "Ticker")
         start_price, num_owned = weighted_average(filename, ticker, shares_number, purchase_price) 
         portfolio.at[ticker, "Number"] = num_owned
-        portfolio.at[ticker, "Purchase price"] = start_price        
+        portfolio.at[ticker, "Purchase price"] = start_price    
+        portfolio.at[ticker, "% change"] = percent_change(start_price, current_price)    
         # start price is the weighted average of prices and num_owned is number u owned + number bought
         ## data = format_for_excel(ticker, num_owned, start_price, current_price, percent_change(purchase_price, current_price))
         print(portfolio)
