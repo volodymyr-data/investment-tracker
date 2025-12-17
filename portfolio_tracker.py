@@ -9,8 +9,8 @@ from pathlib import Path
 #current problem: deleting transactions
 
 def main():
-    filename = Path("stock_tracker.xlsx")
-    if filename.is_file():
+    FILENAME = Path("stock_tracker.xlsx")
+    if FILENAME.is_file():
         print("entering the excel file...")
     else:
         create_excel()
@@ -20,63 +20,64 @@ def main():
         prices = load_prices(ticker, start_date, end_date)
         purchase_price = prices.loc[start_date].iloc[0]
         current_price = prices.loc["2025-12-11"].iloc[0] #simulating the last date
-        if ticker_owned(filename, ticker):
-            portfolio = pd.read_excel(filename, index_col = "Ticker")
-            start_price, num_owned = weighted_average(filename, ticker, shares_number, purchase_price) 
+        if ticker_owned(FILENAME, ticker):
+            portfolio = pd.read_excel(FILENAME, index_col = "Ticker")
+            start_price, num_owned = weighted_average(FILENAME, ticker, shares_number, purchase_price) 
             portfolio.at[ticker, "Number"] = num_owned
             portfolio.at[ticker, "Purchase price"] = start_price    
             portfolio.at[ticker, "% change"] = percent_change(start_price, current_price)    
             # start price is the weighted average of prices and num_owned is number u owned + number bought
             ## data = format_for_excel(ticker, num_owned, start_price, current_price, percent_change(purchase_price, current_price))
             print(portfolio)
-            update_to_excel(portfolio, filename)
+            update_to_excel(portfolio, FILENAME)
 
         else:
             data = format_for_excel(ticker, shares_number, purchase_price, current_price, percent_change(purchase_price, current_price))
-            export_to_excel(data, filename)
+            export_to_excel(data, FILENAME)
 
     elif take_action() == "sell":
         ticker, sale_date, shares_sold = delete_ticker()
-        if ticker_owned(filename, ticker):
-            portfolio = pd.read_excel(filename, index_col= "Ticker")
-            num_owned = remove_shares(filename, ticker, shares_sold)
+        if ticker_owned(FILENAME, ticker):
+            portfolio = pd.read_excel(FILENAME, index_col= "Ticker")
+            num_owned = remove_shares(FILENAME, ticker, shares_sold)
             portfolio.at[ticker, "Number"] = num_owned
-            update_to_excel(portfolio, filename)
+            update_to_excel(portfolio, FILENAME)
         else:
             print("you don't own that ticker and you cannot short")
-        
-def ticker_owned(file: str, ticker:str) -> bool:
-    """
-    returns true if the ticker entered is already owned
 
-    :param file: Description
-    :type file: str
-    :param ticker: Description
-    :type ticker: str
-    :return: Description
-    :rtype: bool
-    """
-
-    tickers = pd.read_excel(file)
-    rows_list = tickers.values.tolist()
-    for row in rows_list:
-        if ticker in row:
-            return True
-    return False
+    # num_holdings, total_sum, total_shares, average_price, overall_percent = prepare_summary(FILENAME)   
+    # summary_to_update = format_summary(num_holdings, total_sum, total_shares, average_price, overall_percent)
+    # update_summary(summary_to_update, FILENAME)
 
 ## CALCULATIONS
-def remove_shares(filename: str, ticker: str, shares_sold: int) -> int:
-    data = pd.read_excel(filename, index_col = "Ticker")
+def prepare_summary(FILENAME: str) -> tuple[int, float, int, float, float]:
+    """
+    claculates the summary statistics of the portfolio
+    
+    :return: Description
+    :rtype: tuple[int, float, int, float, float]
+    """
+    portfolio = pd.read_excel(FILENAME)
+    num_holdings = len(portfolio.values.tolist())
+    total_shares = portfolio.loc["Number"].sum()
+    total_sum = (portfolio.loc[:, "Number"] * portfolio.loc[:, "Purchase price"]).sum()
+    average_price = total_sum / total_shares
+    overall_percent = ((portfolio.loc[:, "Current price"] - portfolio.loc[:, "Purchase price"]).sum() / portfolio.loc[:, "Purchase price"].sum()) * 100
+
+    return num_holdings, total_sum, total_shares, average_price, overall_percent
+
+def remove_shares(FILENAME: str, ticker: str, shares_sold: int) -> int:
+    data = pd.read_excel(FILENAME, index_col = "Ticker")
     num_owned = data.loc[ticker]["Number"]
     num_owned -= shares_sold
     return num_owned
 
-def weighted_average(filename: str, ticker: str, shares_number: int, purchase_price: float) -> tuple[float, int]:
+def weighted_average(FILENAME: str, ticker: str, shares_number: int, purchase_price: float) -> tuple[float, int]:
     """
     calculates the weighted average of shares bought at different prices
     
-    :param filename: Description
-    :type filename: str
+    :param FILENAME: Description
+    :type FILENAME: str
     :param ticker: Description
     :type ticker: str
     :param shares_number: Description
@@ -85,7 +86,7 @@ def weighted_average(filename: str, ticker: str, shares_number: int, purchase_pr
     :type purchase_price: float
     """
     # calculating new number owned and new weighted average
-    data = pd.read_excel(filename, index_col= "Ticker")
+    data = pd.read_excel(FILENAME, index_col= "Ticker")
     num_owned = data.loc[ticker]["Number"]
     start_price = data.loc[ticker]["Purchase price"]
     weighted_price = (num_owned * start_price + shares_number * purchase_price) / (num_owned + shares_number)
@@ -138,7 +139,7 @@ def delete_ticker() -> tuple[str, str, int]:
 
     ticker = input("Ticker name: ")
 
-    shares_number = int(input("Number bought: "))
+    shares_number = int(input("Number sold: "))
 
     return ticker, sale_date, shares_number
 
@@ -159,31 +160,48 @@ def add_ticker() -> tuple[str, str, str, int]:
 
     return ticker, start_date, end_date, shares_number
 
-def load_prices(ticker: str, 
-                start: Union[str, datetime, pd.Timestamp],
-                end:Union[str, datetime, pd.Timestamp]) -> pd.DataFrame:
-    """
-    loads the price of a ticker and deletes everything except for ticker and closing price for the day
-
-    :param ticker: Description
-    :type ticker: str
-    :param start: Description
-    :type start: Union[str, datetime, pd.Timestamp]
-    :param end: Description
-    :type end: Union[str, datetime, pd.Timestamp]
-    :return: a dataframe with nothing but ticker name and closing price
-    :rtype: DataFrame
-    """
-    data = yf.download(
-        tickers = ticker, 
-        start = start, 
-        end = end, 
-        interval = "1d"
-    )
-    data.drop(["High", "Low", "Open", "Volume"], inplace= True, axis = 1)
-    return data
-
 ## EXCEL OPERATIONS
+
+def update_summary(summary: pd.DataFrame, FILENAME: str) -> None:
+    """
+    updates the summary in excel sheet
+    
+    :param summary: Description
+    :type summary: pd.DataFrame
+    :param FILENAME: Description
+    :type FILENAME: str
+    """
+    writer = pd.ExcelWriter(FILENAME, engine = "openpyxl", mode = "w")
+    summary.to_excel(writer, sheet_name = "Summary", index = True)
+    writer.close()
+
+    print("Your Summary has been updated")
+
+def format_summary(num_holdings: int, total_sum: float, total_shares: int, average_price: float, overall_percent: float) -> None:
+    """
+    formats summary for excel sheet
+    
+    :param num_holdings: Description
+    :type num_holdings: int
+    :param total_sum: Description
+    :type total_sum: float
+    :param total_shares: Description
+    :type total_shares: int
+    :param average_price: Description
+    :type average_price: float
+    :param overall_percent: Description
+    :type overall_percent: float
+    """
+    form = {
+        "Holdings owned": num_holdings, 
+        "Total Capital invested": total_sum, 
+        "Total shares owned": total_shares,
+        "Average price of a share": average_price, 
+        "Portfolio growth": overall_percent
+    }
+    data = pd.DataFrame(data = form)
+
+    return data
 
 def format_for_excel(ticker: str, shares_number: int, purchase_price: float, end_price: float, percent_change: float) -> pd.DataFrame:
     """
@@ -208,40 +226,33 @@ def format_for_excel(ticker: str, shares_number: int, purchase_price: float, end
     # print(data)
     return data
 
-def update_remove(data: pd.DataFrame, filename: str) -> None:
-    writer = pd.ExcelWriter(filename, engine = "openpyxl", mode = "w")
-    data.to_excel(writer, index = True)
-    writer.close()
-    
-    print("stock was sold")
-
-def update_to_excel(data: pd.DataFrame, filename: str) -> None:
+def update_to_excel(data: pd.DataFrame, FILENAME: str) -> None:
     """
     when the ticker entered is owned the function will write down the updated info
     
     :param data: Description
     :type data: pd.DataFrame
-    :param filename: Description
-    :type filename: str
+    :param FILENAME: Description
+    :type FILENAME: str
     """
-    writer = pd.ExcelWriter(path= filename, engine= "openpyxl", mode = "w")
-    data.to_excel(writer, index = True)
+    writer = pd.ExcelWriter(path= FILENAME, engine= "openpyxl", mode = "w")
+    data.to_excel(writer, index = True, sheet_name = "MyInvestments")
     writer.close()
     print("the stocks owned was updated!")
 
-def export_to_excel(data: pd.DataFrame, filename: str) -> None:
+def export_to_excel(data: pd.DataFrame, FILENAME: str) -> None:
     """
-    exports all the data to excel
+    exports all the new data to excel
         
     :param data: Description
     :type data: pd.DataFrame
-    :param filename: Description
-    :type filename: str
+    :param FILENAME: Description
+    :type FILENAME: str
     """
 
-    reader = pd.read_excel(filename)
-    writer = pd.ExcelWriter(path = filename, engine = "openpyxl", mode = "a", if_sheet_exists = "overlay")
-    data.to_excel(writer, index = False, header = False, startrow = len(reader) + 1)
+    reader = pd.read_excel(FILENAME)
+    writer = pd.ExcelWriter(path = FILENAME, engine = "openpyxl", mode = "a", if_sheet_exists = "overlay")
+    data.to_excel(writer, index = False, header = False, startrow = len(reader) + 1, sheet_name = "MyInvestments")
     writer.close()
     print("new stock has been added")
 
@@ -252,15 +263,69 @@ def create_excel() -> None:
 
     print("creating excel file...")
     file_name = "stock_tracker.xlsx"
-    data = {"Ticker": [],
+    investments = {"Ticker": [],
             "Number": [], 
             "Purchase price": [], 
             "End price": [],
             "% change": []
             }
-    data = pd.DataFrame(data).set_index("Ticker")
-    data.to_excel(file_name)
+    summary = {
+        "Holdings owned": [], 
+        "Total Capital invested": [], 
+        "Total shares owned": [],
+        "Average price of a share": [], 
+        "Portfolio growth": []
+    }
+    investments = pd.DataFrame(investments).set_index("Ticker")
+    investments.to_excel(file_name, sheet_name = "MyInvestments")
+    summary = pd.DataFrame(summary).set_index("Holdings owned")
+    summary.to_excel(file_name, sheet_name = "Summary") ## here is a problem
+
+
     print("new excel file has been created")
 
+## OTHER
+def load_prices(ticker: str, 
+                start: Union[str, datetime, pd.Timestamp],
+                end:Union[str, datetime, pd.Timestamp]) -> pd.DataFrame:
+    """
+    loads the price of a ticker and deletes everything except for ticker and closing price for the day
+
+    :param ticker: Description
+    :type ticker: str
+    :param start: Description
+    :type start: Union[str, datetime, pd.Timestamp]
+    :param end: Description
+    :type end: Union[str, datetime, pd.Timestamp]
+    :return: a dataframe with nothing but ticker name and closing price
+    :rtype: DataFrame
+    """
+    data = yf.download(
+        tickers = ticker, 
+        start = start, 
+        end = end, 
+        interval = "1d"
+    )
+    data.drop(["High", "Low", "Open", "Volume"], inplace= True, axis = 1)
+    return data
+
+def ticker_owned(file: str, ticker:str) -> bool:
+    """
+    returns true if the ticker entered is already owned
+
+    :param file: Description
+    :type file: str
+    :param ticker: Description
+    :type ticker: str
+    :return: Description
+    :rtype: bool
+    """
+
+    tickers = pd.read_excel(file)
+    rows_list = tickers.values.tolist()
+    for row in rows_list:
+        if ticker in row:
+            return True
+    return False
 if __name__ == "__main__":
     main()
