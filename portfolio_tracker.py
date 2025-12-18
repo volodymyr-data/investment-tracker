@@ -45,9 +45,9 @@ def main():
         else:
             print("you don't own that ticker and you cannot short")
 
-    # num_holdings, total_sum, total_shares, average_price, overall_percent = prepare_summary(FILENAME)   
-    # summary_to_update = format_summary(num_holdings, total_sum, total_shares, average_price, overall_percent)
-    # update_summary(summary_to_update, FILENAME)
+    num_holdings, total_sum, total_shares, average_price, overall_percent = prepare_summary(FILENAME)   
+    summary_to_update = format_summary(num_holdings, total_sum, total_shares, average_price, overall_percent)
+    update_summary(summary_to_update, FILENAME)
 
 ## CALCULATIONS
 def prepare_summary(FILENAME: str) -> tuple[int, float, int, float, float]:
@@ -59,10 +59,10 @@ def prepare_summary(FILENAME: str) -> tuple[int, float, int, float, float]:
     """
     portfolio = pd.read_excel(FILENAME)
     num_holdings = len(portfolio.values.tolist())
-    total_shares = portfolio.loc["Number"].sum()
-    total_sum = (portfolio.loc[:, "Number"] * portfolio.loc[:, "Purchase price"]).sum()
+    total_shares = portfolio["Number"].sum()
+    total_sum = (portfolio["Number"] * portfolio["Purchase price"]).sum()
     average_price = total_sum / total_shares
-    overall_percent = ((portfolio.loc[:, "Current price"] - portfolio.loc[:, "Purchase price"]).sum() / portfolio.loc[:, "Purchase price"].sum()) * 100
+    overall_percent = ((portfolio["End price"] - portfolio["Purchase price"]).sum() / portfolio["Purchase price"].sum()) * 100
 
     return num_holdings, total_sum, total_shares, average_price, overall_percent
 
@@ -113,7 +113,6 @@ def percent_change(purchase_price:float, current_price: float) -> float:
     percent_change = ((current_price - purchase_price) / purchase_price) * 100
     return percent_change
 
-# def calculate_pl()-> float:
 
 ## USER CHOICES AND IMPLICATIONS
 def take_action() -> str:
@@ -171,7 +170,7 @@ def update_summary(summary: pd.DataFrame, FILENAME: str) -> None:
     :param FILENAME: Description
     :type FILENAME: str
     """
-    writer = pd.ExcelWriter(FILENAME, engine = "openpyxl", mode = "w")
+    writer = pd.ExcelWriter(FILENAME, engine = "openpyxl", mode = "a", if_sheet_exists = "replace")
     summary.to_excel(writer, sheet_name = "Summary", index = True)
     writer.close()
 
@@ -193,11 +192,11 @@ def format_summary(num_holdings: int, total_sum: float, total_shares: int, avera
     :type overall_percent: float
     """
     form = {
-        "Holdings owned": num_holdings, 
-        "Total Capital invested": total_sum, 
-        "Total shares owned": total_shares,
+        "Holdings owned": [num_holdings], 
+        "Total Capital invested": [total_sum], 
+        "Total shares owned": [total_shares],
         "Average price of a share": average_price, 
-        "Portfolio growth": overall_percent
+        "Portfolio growth": [overall_percent]
     }
     data = pd.DataFrame(data = form)
 
@@ -276,10 +275,12 @@ def create_excel() -> None:
         "Average price of a share": [], 
         "Portfolio growth": []
     }
-    investments = pd.DataFrame(investments).set_index("Ticker")
-    investments.to_excel(file_name, sheet_name = "MyInvestments")
-    summary = pd.DataFrame(summary).set_index("Holdings owned")
-    summary.to_excel(file_name, sheet_name = "Summary") ## here is a problem
+    writer = pd.ExcelWriter(file_name, engine="openpyxl")
+    investments_df = pd.DataFrame(investments).set_index("Ticker")
+    summary_df = pd.DataFrame(summary).set_index("Holdings owned")
+    investments_df.to_excel(writer, sheet_name="MyInvestments")
+    summary_df.to_excel(writer, sheet_name="Summary")
+    writer.close()
 
 
     print("new excel file has been created")
