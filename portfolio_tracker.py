@@ -6,7 +6,7 @@ from typing import Union
 import openpyxl
 from pathlib import Path
 
-#current problem: deleting transactions
+#current problem: updating the most recent price
 
 def main():
     FILENAME = Path("stock_tracker.xlsx")
@@ -15,7 +15,8 @@ def main():
     else:
         create_excel()
 
-    if take_action() == "buy":
+    action = take_action()
+    if action == "buy":
         ticker, start_date, end_date, shares_number = add_ticker()
         prices = load_prices(ticker, start_date, end_date)
         purchase_price = prices.loc[start_date].iloc[0]
@@ -35,7 +36,7 @@ def main():
             data = format_for_excel(ticker, shares_number, purchase_price, current_price, percent_change(purchase_price, current_price))
             export_to_excel(data, FILENAME)
 
-    elif take_action() == "sell":
+    elif action == "sell":
         ticker, sale_date, shares_sold = delete_ticker()
         if ticker_owned(FILENAME, ticker):
             portfolio = pd.read_excel(FILENAME, index_col= "Ticker")
@@ -44,6 +45,10 @@ def main():
             update_to_excel(portfolio, FILENAME)
         else:
             print("you don't own that ticker and you cannot short")
+    
+    elif action == "update":
+        current_price = update_prices(FILENAME)
+
 
     num_holdings, total_sum, total_shares, average_price, overall_percent = prepare_summary(FILENAME)   
     summary_to_update = format_summary(num_holdings, total_sum, total_shares, average_price, overall_percent)
@@ -123,7 +128,7 @@ def take_action() -> str:
     :rtype: str
     """
 
-    action = input("Do you want to buy or sell? ")
+    action = input("Do you want to buy, sell, or update? ")
     return action
 
 def delete_ticker() -> tuple[str, str, int]:
@@ -286,6 +291,23 @@ def create_excel() -> None:
     print("new excel file has been created")
 
 ## OTHER
+def update_prices(filename: str) -> pd.DataFrame:
+    """
+    updates the prices on request and saves them in excel
+    
+    :param filename: Description
+    :type filename: str
+    :return: Description
+    :rtype: DataFrame
+    """
+    df = pd.read_excel(filename)
+    tickers = df["Ticker"].to_list()
+    prices = yf.download(tickers, interval = "1d")["Close"]
+    df["End price"] = df["Ticker"].apply(lambda x: prices[x.upper()].iloc[-2] if len(tickers) > 1 else prices.iloc[-2])
+    # print(df["End price"])
+    df.to_excel(filename, index=False)
+
+
 def load_prices(ticker: str, 
                 start: Union[str, datetime, pd.Timestamp],
                 end:Union[str, datetime, pd.Timestamp]) -> pd.DataFrame:
