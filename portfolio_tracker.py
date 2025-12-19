@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Union
 import openpyxl
 from pathlib import Path
@@ -19,8 +19,8 @@ def main():
     if action == "buy":
         ticker, start_date, end_date, shares_number = add_ticker()
         prices = load_prices(ticker, start_date, end_date)
-        purchase_price = prices.loc[start_date].iloc[0]
-        current_price = prices.loc[end_date].iloc[0] #simulating the last date
+        purchase_price = prices.iloc[0, 0]
+        current_price = prices.iloc[-1, 0] #simulating the last date
         if ticker_owned(FILENAME, ticker):
             portfolio = pd.read_excel(FILENAME, index_col = "Ticker")
             start_price, num_owned = weighted_average(FILENAME, ticker, shares_number, purchase_price) 
@@ -163,9 +163,8 @@ def add_ticker() -> tuple[str, str, str, int]:
     :rtype: tuple[str, str, str, int]
     """
     date = input("enter the date of purchase (YYYY-MM-DD): ")
-    start_date = pd.to_datetime(date).strftime("%Y-%m-%d")   
-    end_date = datetime.now().strftime("%Y-%m-%d")
-    
+    start_date = pd.to_datetime(date)   
+    end_date = datetime.today() - timedelta(days=1)    
     ticker = input("Ticker name: ")
 
     shares_number = int(input("Number bought: "))
