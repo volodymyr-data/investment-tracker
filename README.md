@@ -1,6 +1,6 @@
 # Project name: investment tracker
 ## 🚀 Purpose:
-    script for automatization of tracking of investments (shares) of publicly traded companies. It allows the use to simply choose action (buy/sell/update) and record transaction by entering a ticker, date of purchase, and number of shares purchased. Later the program retreives this information, formats it appropriately, and records it into the Excel-sheet, and updates the summary of your investments.
+    script for automatization of tracking of investments (shares) of publicly traded companies. It allows the user to simply choose action (buy/sell/update) and record transaction by entering a ticker, date of purchase, and number of shares purchased. Later the program retrieves this information, formats it appropriately, and records it into the Excel-sheet, and updates the summary of your investments.
 ## 📊 Data: 
     data source is YahooFinance API and contains the historical Open, Close, Highest, Lowest, prices and Volume from the date requested by a user up to most recent price. It is then cleaned up to contain only a ticker, and a close price
 ## 🛠 Tech stack: 

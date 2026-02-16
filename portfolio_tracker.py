@@ -9,11 +9,11 @@ from pathlib import Path
 #current problem: updating the most recent price
 
 def main():
-    FILENAME = Path("investment-tracker/stock_tracker.xlsx")
+    FILENAME = Path("D:\portfolio_tracking_pilot\investment-tracker\stock_tracker.xlsx")
     if FILENAME.exists():
         print("entering the excel file...")
     else:
-        create_excel()
+        create_excel(FILENAME)
 
     action = take_action()
     if action == "buy":
@@ -267,13 +267,13 @@ def export_to_excel(data: pd.DataFrame, FILENAME: str) -> None:
     writer.close()
     print("new stock has been added")
 
-def create_excel() -> None:
+def create_excel(file_path: Path) -> None:
     """
     if there is no excel file for tracking in the current directory this will create one
     """
 
     print("creating excel file...")
-    file_name = "stock_tracker.xlsx"
+    file_path.parent.mkdir(parents= True, exist_ok=True)
     investments = {"Ticker": [],
             "Number": [], 
             "Purchase price": [], 
@@ -287,7 +287,7 @@ def create_excel() -> None:
         "Average price of a share": [], 
         "Portfolio growth": []
     }
-    writer = pd.ExcelWriter(file_name, engine="openpyxl")
+    writer = pd.ExcelWriter(file_path, engine="openpyxl")
     investments_df = pd.DataFrame(investments).set_index("Ticker")
     summary_df = pd.DataFrame(summary).set_index("Holdings owned")
     investments_df.to_excel(writer, sheet_name="MyInvestments")
